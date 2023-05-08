@@ -1,5 +1,5 @@
 // adapted from https://github.com/Estimote/Android-Indoor-SDK/tree/master/example/indoorapp
-package com.example.myapplication
+package com.example.app
 
 import android.app.Application
 import android.app.Notification
@@ -30,13 +30,16 @@ import com.estimote.indoorsdk_module.cloud.Location
 import com.estimote.indoorsdk_module.cloud.LocationPosition
 import com.estimote.indoorsdk_module.view.IndoorLocationView
 import com.estimote.mustard.rx_goodness.rx_requirements_wizard.RequirementsWizardFactory
+import com.example.myapplication.R
 
 // IndoorApplication ///////////////////////////////////////////////////////////////////////////////
 // application data for estimote is stored here for later use
 class IndoorApplication : Application() {
     // map with name and location, and estimote cloud credentials
     val locationsById: MutableMap<String, Location> = mutableMapOf()
-    val cloudCredentials = EstimoteCloudCredentials(ESTIMOTE_APP_ID, ESTIMOTE_APP_TOKEN)
+    val cloudCredentials = EstimoteCloudCredentials(
+        "test-indoor-app-77p",
+        "26e6132406e0e817506e5c91d5994d47")
 }
 
 // LocationListAdapter /////////////////////////////////////////////////////////////////////////////
@@ -238,8 +241,8 @@ class MainActivity: AppCompatActivity() {
         // You need to setup it with your app context,  location data object,
         // and your cloud credentials that you declared in IndoorApplication.kt file
         // we are using .withScannerInForegroundService(notification)
-        // this will allow for scanning in background and will ensura that the system won't kill the
-        // scanning.
+        // this will allow for scanning in background and will ensures that the system won't kill
+        // the scanning.
         // You can also use .withSimpleScanner() that will be handled without service.
         indoorLocationManager = IndoorLocationManagerBuilder(this,
             location, (application as IndoorApplication).cloudCredentials)
@@ -263,11 +266,13 @@ class MainActivity: AppCompatActivity() {
                 onRequirementsFulfilled = { indoorLocationManager.startPositioning() },
                 onRequirementsMissing = {
                     Toast.makeText(applicationContext,
-                        "Unable to scan for beacons. Requirements missing: ${it.joinToString()}",
+                        "Unable to scan for beacons. Requirements missing: " +
+                            it.joinToString(),
                         Toast.LENGTH_SHORT).show()
                 },
                 onError = {
-                    Toast.makeText(applicationContext, "Unable to scan for beacons. Error: ${it.message}",
+                    Toast.makeText(applicationContext, "Unable to scan for beacons. Error: " +
+                        it.message,
                         Toast.LENGTH_SHORT).show()
                 })
     }
@@ -277,7 +282,8 @@ class MainActivity: AppCompatActivity() {
         val locationId = intent.extras?.getString(intentKeyLocationId)
 
         // get object of location. If something went wrong, we build empty location with no data.
-        location = (application as IndoorApplication).locationsById[locationId] ?: buildEmptyLocation()
+        location = (application as IndoorApplication)
+            .locationsById[locationId] ?: buildEmptyLocation()
 
         // Set the Activity title to you location name
         title = location.name
@@ -285,7 +291,8 @@ class MainActivity: AppCompatActivity() {
 
     // creates an empty location
     private fun buildEmptyLocation(): Location {
-        return Location("", "", true, "", 0.0, emptyList(), emptyList(), emptyList())
+        return Location("", "", true, "", 0.0,
+            emptyList(), emptyList(), emptyList())
     }
 
     // destructor to when the MainActivity is removed from the heap
