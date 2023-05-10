@@ -1,6 +1,7 @@
 // adapted from https://github.com/Estimote/Android-Indoor-SDK/tree/master/example/indoorapp
 package com.example.app
 
+import android.annotation.SuppressLint
 import android.app.Application
 import android.app.Notification
 import android.app.NotificationChannel
@@ -8,6 +9,7 @@ import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -30,6 +32,7 @@ import com.estimote.indoorsdk_module.cloud.Location
 import com.estimote.indoorsdk_module.cloud.LocationPosition
 import com.estimote.indoorsdk_module.view.IndoorLocationView
 import com.estimote.mustard.rx_goodness.rx_requirements_wizard.RequirementsWizardFactory
+
 import com.example.myapplication.R
 
 // IndoorApplication ///////////////////////////////////////////////////////////////////////////////
@@ -78,6 +81,7 @@ class LocationListAdapter (private var mLocations: List<Location>):
     }
 
     // resets the locations to a new list of locations
+    @SuppressLint("NotifyDataSetChanged")
     fun setLocations(list: List<Location>) {
         this.mLocations = list
         notifyDataSetChanged()
@@ -134,12 +138,13 @@ class LocationListActivity: AppCompatActivity() {
 
 // Splash Activity /////////////////////////////////////////////////////////////////////////////////
 // Start screen while the app is loading
+@SuppressLint("CustomSplashScreen")
 class SplashActivity: AppCompatActivity() {
 
     // overridden constructor
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
+        Log.d("LUKE", "splash")
         // Make actionbar invisible.
         window.requestFeature(Window.FEATURE_ACTION_BAR)
         supportActionBar?.hide()
@@ -185,9 +190,13 @@ class SplashActivity: AppCompatActivity() {
 // MainActivity ////////////////////////////////////////////////////////////////////////////////////
 class MainActivity: AppCompatActivity() {
 
+    private lateinit var backendServer        : BackendServer
     private lateinit var indoorLocationView   : IndoorLocationView
     private lateinit var indoorLocationManager: ScanningIndoorLocationManager
     private lateinit var location             : Location
+
+    var x : Double = 0.0
+    var y : Double = 0.0
 
     companion object {
         const val intentKeyLocationId = "location_id"
@@ -201,6 +210,8 @@ class MainActivity: AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
+        backendServer.constructor(applicationContext)
 
         // Declare notification that will be displayed in user's notification bar.
         // You can modify it as you want/
@@ -249,13 +260,27 @@ class MainActivity: AppCompatActivity() {
             .withScannerInForegroundService(notification)
             .build()
 
+        //location.beacons
+        val a = location.beacons[0].toString()
+        val b = location.beacons[1].toString()
+        val c = location.beacons[2].toString()
+
+        Log.d("LUKE", "beacons:\n\t$a\n\t$b\n\t$c")
+
         // Hook the listener for position update events
         indoorLocationManager.setOnPositionUpdateListener(object: OnPositionUpdateListener {
             override fun onPositionOutsideLocation() {
+                Log.d("LUKE","outside location")
                 indoorLocationView.hidePosition()
             }
 
             override fun onPositionUpdate(locationPosition: LocationPosition) {
+                x = locationPosition.x
+                y = locationPosition.y
+                Log.d("LUKE","$x, $y")
+
+                //reports position to backend server
+                backendServer.reportLocation(x, y)
                 indoorLocationView.updatePosition(locationPosition)
             }
         })
@@ -263,27 +288,34 @@ class MainActivity: AppCompatActivity() {
         // Check if bluetooth is enabled, location permissions are granted, etc.
         RequirementsWizardFactory.createEstimoteRequirementsWizard()
             .fulfillRequirements(this,
-                onRequirementsFulfilled = { indoorLocationManager.startPositioning() },
+                onRequirementsFulfilled = {
+                    Log.d("LUKE", "Connection requirement fulfilled")
+                    indoorLocationManager.startPositioning()
+
+                },
                 onRequirementsMissing = {
+                    Log.d("LUKE", "Unable to scan for beacons. Requirements missing: " +
+                            it.joinToString())
                     Toast.makeText(applicationContext,
                         "Unable to scan for beacons. Requirements missing: " +
-                            it.joinToString(),
+                        it.joinToString(),
                         Toast.LENGTH_SHORT).show()
                 },
                 onError = {
-                    Toast.makeText(applicationContext, "Unable to scan for beacons. Error: " +
-                        it.message,
+                    Log.d("LUKE","Unable to scan for beacons. Error: " + it.message)
+                    Toast.makeText(applicationContext,
+                        "Unable to scan for beacons. Error: " + it.message,
                         Toast.LENGTH_SHORT).show()
-                })
+                }
+            )
     }
 
     private fun setupLocation() {
         // get id of location to show from intent
-        val locationId = intent.extras?.getString(intentKeyLocationId)
 
         // get object of location. If something went wrong, we build empty location with no data.
         location = (application as IndoorApplication)
-            .locationsById[locationId] ?: buildEmptyLocation()
+            .locationsById[intent.extras?.getString(intentKeyLocationId)] ?: buildEmptyLocation()
 
         // Set the Activity title to you location name
         title = location.name
