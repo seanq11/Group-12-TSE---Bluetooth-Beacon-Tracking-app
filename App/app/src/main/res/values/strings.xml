@@ -1,4 +1,7 @@
 <resources>
     <string name="app_name">Indoor app</string>
     <string name="title_activity_splash">SplashActivity</string>
+    <string name="indoor_location_app">Indoor Location App</string>
+    <string name="tse_group_12">TSE Group 12</string>
+    <string name="demo_app_for_android">Demo app for Android</string>
 </resources>
